@@ -8,7 +8,11 @@ import {
     getProjectTestCases,
     updateProject,
     getProjectTests,
-    getProjectAnalytics
+    getProjectAnalytics,
+    deleteProjectTests,
+    deleteTestCase,
+    deleteTestResult,
+    deleteProjectResults
     
 } from "../controllers/project.controller.js";
 
@@ -44,6 +48,20 @@ router.patch("/:id", authMiddleware,updateProject);
 
 router.delete("/:id", authMiddleware,deleteProject);
 
+router.delete("/:id/tests/:testId", deleteTestCase);
+
+router.delete("/:id/tests", deleteProjectTests);
+
 router.get("/:id/tests", getProjectTests);
+
+router.delete(
+    "/:id/test-results/:resultId",
+    deleteTestResult
+);
+
+router.delete(
+    "/:id/test-results",
+    deleteProjectResults
+);
 
 export default router;

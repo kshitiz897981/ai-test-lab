@@ -82,10 +82,7 @@ export const deleteProject = async (req, res) => {
     try {
         const { id } = req.params;
 
-         const project = await projectModel.findOneAndDelete({
-        _id: id,
-         user: req.user._id
-        });
+        const project = await projectModel.findById(id);
 
         if (!project) {
             return res.status(404).json({
@@ -93,11 +90,26 @@ export const deleteProject = async (req, res) => {
             });
         }
 
+        // Delete project
+        await projectModel.findByIdAndDelete(id);
+
+        // Delete all generated test cases belonging to this project
+        await testCaseModel.deleteMany({
+            project: id
+        });
+
+        // Delete all execution results belonging to this project
+        await testResultModel.deleteMany({
+            project: id
+        });
+
         return res.status(200).json({
             message: "Project deleted successfully"
         });
 
     } catch (error) {
+        console.error("DELETE PROJECT ERROR:", error);
+
         return res.status(500).json({
             message: "Failed to delete project",
             error: error.message
@@ -341,6 +353,118 @@ export const getProjectAnalytics = async (req, res) => {
 
         return res.status(500).json({
             message: "Failed to fetch project analytics",
+            error: error.message
+        });
+    }
+};
+
+export const deleteTestCase = async (req, res) => {
+    try {
+        const { id, testId } = req.params;
+
+      
+
+        const testCase = await testCaseModel.findOne({
+            _id: testId,
+            project: id
+        });
+
+        if (!testCase) {
+            return res.status(404).json({
+                message: "Test case not found"
+            });
+        }
+
+        await testCaseModel.deleteOne({
+            _id: testId,
+            project: id
+        });
+
+        return res.status(200).json({
+            message: "Test case deleted successfully",
+            testId
+        });
+
+    } catch (error) {
+        console.error("DELETE TEST ERROR:", error);
+
+        return res.status(500).json({
+            message: "Failed to delete test case",
+            error: error.message
+        });
+    }
+};
+
+export const deleteProjectTests = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const result = await testCaseModel.deleteMany({
+            project: id
+        });
+
+        return res.status(200).json({
+            message: "Project tests deleted successfully",
+            deletedCount: result.deletedCount
+        });
+
+    } catch (error) {
+        console.error("DELETE PROJECT TESTS ERROR:", error);
+
+        return res.status(500).json({
+            message: "Failed to delete project tests",
+            error: error.message
+        });
+    }
+};
+
+export const deleteTestResult = async (req, res) => {
+    try {
+        const { id, resultId } = req.params;
+
+        const result = await testResultModel.findOneAndDelete({
+            _id: resultId,
+            project: id
+        });
+
+        if (!result) {
+            return res.status(404).json({
+                message: "Test result not found"
+            });
+        }
+
+        return res.status(200).json({
+            message: "Test result deleted successfully"
+        });
+
+    } catch (error) {
+        console.error("DELETE TEST RESULT ERROR:", error);
+
+        return res.status(500).json({
+            message: "Failed to delete test result",
+            error: error.message
+        });
+    }
+};
+
+export const deleteProjectResults = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const result = await testResultModel.deleteMany({
+            project: id
+        });
+
+        return res.status(200).json({
+            message: "Project execution results deleted successfully",
+            deletedCount: result.deletedCount
+        });
+
+    } catch (error) {
+        console.error("DELETE PROJECT RESULTS ERROR:", error);
+
+        return res.status(500).json({
+            message: "Failed to delete execution results",
             error: error.message
         });
     }

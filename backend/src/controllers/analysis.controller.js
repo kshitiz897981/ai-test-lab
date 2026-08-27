@@ -1,5 +1,6 @@
 import projectModel from "../models/project.model.js";
 
+
 import { createCodeDocuments } from "../services/code.service.js";
 import { createVectorStore } from "../services/vector.service.js";
 import { generateTestCases } from "../services/llm.service.js";
@@ -19,10 +20,13 @@ import {
 
 export const analyzeRepository = async (req, res) => {
     try {
+        const projectId = req.params.id;
 
-        const { id } = req.params;
+        // ===============================
+        // FIND PROJECT
+        // ===============================
 
-        const project = await projectModel.findById(id);
+        const project = await projectModel.findById(projectId);
 
         if (!project) {
             return res.status(404).json({
@@ -37,18 +41,22 @@ export const analyzeRepository = async (req, res) => {
         }
 
 
-        // Get repository tree
+        // ===============================
+        // GET GITHUB FILES
+        // ===============================
+
         const files = await getRepositoryFiles(
             project.githubOwner,
             project.githubRepo
         );
 
-
-        // Filter source files
         const sourceFiles = filterSourceFiles(files).slice(0, 30);
 
 
-        // Get actual file contents
+        // ===============================
+        // GET FILE CONTENT
+        // ===============================
+
         const codeFiles = [];
 
         for (const file of sourceFiles) {
@@ -66,69 +74,323 @@ export const analyzeRepository = async (req, res) => {
         }
 
 
-        // Convert code into LangChain documents
+        // ===============================
+        // CREATE LANGCHAIN DOCUMENTS
+        // ===============================
+
         const documents = await createCodeDocuments(codeFiles);
+
         const vectorStore = await createVectorStore(documents);
 
-       const results = await vectorStore.similaritySearch(
-                  "user authentication and login",
-                   3
-               );
-       const relevantCode = results
-       .map((doc) => doc.pageContent)
-        .join("\n\n");
 
-       const testCases = await generateTestCases(relevantCode);
+        // ===============================
+        // RAG QUERIES
+        // ===============================
 
-       await testCaseModel.deleteMany({
-          project: project._id
-                                    });
-
-       await testCaseModel.insertMany(
-        testCases.testCases.map((testCase) => ({
-        project: project._id,
-        ...testCase
-      }))
-      );
-               
+        const queries = [
+            "authentication login logout register",
+            "authorization middleware protected routes",
+            "API validation request body validation",
+            "CRUD create read update delete",
+            "database models queries operations",
+            "business logic services",
+            "API routes endpoints",
+            "error handling exceptions",
+            "HTTP responses status codes"
+        ];
 
 
-     
-const analysis = {
-    totalFiles: codeFiles.length,
-    totalChunks: documents.length,
+        const allResults = [];
 
-    sourceFiles: codeFiles.map((file) => file.path),
+        for (const query of queries) {
 
-    rag: {
-        enabled: true,
-        query: "user authentication and login",
-        relevantChunks: results.length
-    },
+            const results = await vectorStore.similaritySearch(
+                query,
+                2
+            );
 
-    testGeneration: {
-        totalTests: testCases.testCases?.length || 0
-    }
-};
-
-return res.status(200).json({
-    message: "Repository analyzed successfully",
-    analysis,
-    testCases
-});
+            allResults.push(...results);
+        }
 
 
+        // ===============================
+        // REMOVE DUPLICATE DOCUMENTS
+        // ===============================
+
+        const uniqueDocuments = Array.from(
+            new Map(
+                allResults.map(doc => [
+                    doc.pageContent,
+                    doc
+                ])
+            ).values()
+        );
+
+
+        // Limit context sent to LLM
+        const limitedDocuments = uniqueDocuments.slice(0, 15);
+
+        const relevantCode = limitedDocuments
+            .map(doc => doc.pageContent)
+            .join("\n\n");
+
+
+        // ===============================
+        // GET EXISTING TESTS
+        // ===============================
+
+        const existingTests = await testCaseModel.find({
+            project: project._id
+        });
+
+
+        // Send lightweight information about
+        // existing tests to the LLM
+        const existingTestSummary = existingTests.map(test => ({
+            method: test.input?.method,
+            path: test.input?.path,
+            expectedStatus: test.expectedOutput?.status
+        }));
+
+
+        // ===============================
+        // GENERATE TESTS
+        // ===============================
+
+        const testCases = await generateTestCases(
+            relevantCode,
+            existingTestSummary
+        );
+
+
+        // ===============================
+        // REMOVE DUPLICATE TESTS
+        // ===============================
+
+        const existingKeys = new Set(
+            existingTests.map(test => getBehaviorKey(test))
+        );
+
+
+        const newTests = testCases.testCases.filter(test => {
+
+            const key = getBehaviorKey(test);
+
+            if (existingKeys.has(key)) {
+                return false;
+            }
+
+            existingKeys.add(key);
+
+            return true;
+        });
+
+
+        // ===============================
+        // LOG COUNTS
+        // ===============================
+
+        console.log(
+            "Existing tests:",
+            existingTests.length
+        );
+
+        console.log(
+            "Generated tests:",
+            testCases.testCases.length
+        );
+
+        console.log(
+            "New tests:",
+            newTests.length
+        );
+
+        console.log(
+            "Duplicates:",
+            testCases.testCases.length - newTests.length
+        );
+
+
+        // ===============================
+        // SAVE ONLY NEW TESTS
+        // ===============================
+
+        
+        let insertedTests=[]
+        if (newTests.length > 0) {
+
+            insertedTests = await testCaseModel.insertMany(
+                newTests.map(test => ({
+                    ...test,
+                    project: project._id
+                }))
+            );
+        }
+
+
+        // ===============================
+        // VERIFY MONGODB IDS
+        // ===============================
+
+        console.log(
+            "SAVED TEST IDS:",
+            insertedTests.map(test =>
+                test._id.toString()
+            )
+        );
+
+
+        // ===============================
+        // ANALYSIS DATA
+        // ===============================
+
+        const analysis = {
+
+            totalFiles: codeFiles.length,
+
+            totalChunks: documents.length,
+
+            sourceFiles: codeFiles.map(
+                file => file.path
+            ),
+
+            rag: {
+                enabled: true,
+                queries,
+                relevantChunks: limitedDocuments.length
+            },
+
+            testGeneration: {
+                totalTests:
+                    testCases.testCases?.length || 0
+            }
+        };
+
+
+        // ===============================
+        // RESPONSE
+        // ===============================
+
+        return res.status(200).json({
+
+            message:
+                "Repository analyzed successfully",
+
+            analysis: {
+
+                ...analysis,
+
+                testGeneration: {
+
+                    generatedTests:
+                        testCases.testCases.length,
+
+                    newTests:
+                        insertedTests.length,
+
+                    duplicateTests:
+                        testCases.testCases.length -
+                        insertedTests.length
+                }
+            },
+
+            testCases: {
+
+                // IMPORTANT:
+                // Return savedTests because these
+                // contain MongoDB _id values
+
+                testCases: insertedTests
+            }
+        });
 
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "ANALYZE REPOSITORY ERROR:",
+            error
+        );
 
         return res.status(500).json({
-            message: "Failed to analyze repository",
-            error: error.message
+
+            message:
+                "Failed to analyze repository",
+
+            error:
+                error.message
         });
     }
+};
+
+const getBehaviorKey = (test) => {
+
+    const method =
+        test.input?.method?.toUpperCase() || "";
+
+    const path =
+        test.input?.path || "";
+
+    const status =
+        test.expectedOutput?.status || "";
+
+    const description = (
+        test.description ||
+        test.name ||
+        ""
+    ).toLowerCase();
+
+
+    let behavior = "generic";
+
+
+    if (
+        description.includes("authentication") ||
+        description.includes("without authentication") ||
+        description.includes("without auth") ||
+        description.includes("unauthorized")
+    ) {
+        behavior = "unauthenticated";
+    }
+
+    else if (
+        description.includes("missing") ||
+        description.includes("required")
+    ) {
+        behavior = "missing-input";
+    }
+
+    else if (
+        description.includes("invalid")
+    ) {
+        behavior = "invalid-input";
+    }
+
+    else if (
+        description.includes("duplicate") ||
+        description.includes("idempotency") ||
+        description.includes("already")
+    ) {
+        behavior = "duplicate";
+    }
+
+    else if (
+        description.includes("non-existent") ||
+        description.includes("not found")
+    ) {
+        behavior = "not-found";
+    }
+
+    else if (
+        description.includes("success") ||
+        description.includes("successful") ||
+        description.includes("valid")
+    ) {
+        behavior = "success";
+    }
+
+
+    return `${method}|${path}|${status}|${behavior}`;
 };
 
 export const runProjectTests = async (req, res) => {
