@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 function Dashboard() {
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
-
+   const navigate = useNavigate();
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState("");
@@ -19,6 +19,24 @@ function Dashboard() {
         targetUrl: "",
         language: "JavaScript"
     });
+
+    const deleteProject = async (projectId) => {
+    try {
+        await api.delete(`/projects/${projectId}`);
+
+        setProjects(prev =>
+            prev.filter(project => project._id !== projectId)
+        );
+
+    } catch (error) {
+        console.error("DELETE PROJECT ERROR:", error);
+
+        alert(
+            error.response?.data?.message ||
+            "Failed to delete project"
+        );
+    }
+};
 
     const fetchProjects = async () => {
         try {
@@ -140,22 +158,26 @@ function Dashboard() {
                             Workspace
                         </p>
 
-                        <button className="w-full flex items-center gap-3 rounded-lg bg-violet-500/10 border border-violet-400/10 px-3 py-2.5 text-sm text-violet-300">
+                        <button    onClick={() => navigate("/dashboard")} 
+                        className="w-full flex items-center gap-3 rounded-lg bg-violet-500/10 border border-violet-400/10 px-3 py-2.5 text-sm text-violet-300">
                             <span>⌂</span>
                             Overview
                         </button>
 
-                        <button className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-500 hover:bg-white/5 hover:text-slate-200">
+                        <button onClick={() => navigate("/dashboard")} 
+                        className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-500 hover:bg-white/5 hover:text-slate-200">
                             <span>◉</span>
                             Repositories
                         </button>
 
-                        <button className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-500 hover:bg-white/5 hover:text-slate-200">
+                        <button  onClick={() => navigate("/projects")} 
+                        className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-500 hover:bg-white/5 hover:text-slate-200">
                             <span>◇</span>
                             Test Lab
                         </button>
 
-                        <button className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-500 hover:bg-white/5 hover:text-slate-200">
+                        <button  onClick={() => navigate("/results")} 
+                        className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-500 hover:bg-white/5 hover:text-slate-200">
                             <span>▤</span>
                             Results
                         </button>
@@ -295,10 +317,11 @@ function Dashboard() {
                                 <div className="space-y-3">
 
                                     {projects.map((project) => (
-
+                                       
                                         <ProjectCard
                                             key={project._id}
                                             project={project}
+                                             onDelete={deleteProject}
                                         />
 
                                     ))}
@@ -619,7 +642,7 @@ function Stat({ label, value }) {
 }
 
 
-function ProjectCard({ project }) {
+function ProjectCard({ project,onDelete }) {
 
     const navigate = useNavigate();
 
@@ -645,6 +668,12 @@ function ProjectCard({ project }) {
                         </p>
 
                     </div>
+                     <button
+    onClick={() => onDelete(project._id)}
+    className="border border-red-400/20 px-3 py-1.5 text-[9px] font-mono text-red-400 hover:bg-red-400/10 transition"
+>
+    DELETE
+                     </button>
 
                 </div>
 
@@ -652,6 +681,8 @@ function ProjectCard({ project }) {
                 <span className="text-[10px] font-mono text-emerald-400">
                     ● READY
                 </span>
+
+                
 
             </div>
 

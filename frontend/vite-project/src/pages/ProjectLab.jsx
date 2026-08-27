@@ -120,6 +120,94 @@ const [loadingRuns, setLoadingRuns] = useState(false);
     }
 };
 
+const deleteTest = async (testId) => {
+    try {
+        console.log("DELETE ID:", testId);
+
+        await api.delete(
+            `/projects/${id}/tests/${testId}`
+        );
+
+        setTestCases(prev =>
+            prev.filter(test => test._id !== testId)
+        );
+
+    } catch (error) {
+        console.error("DELETE ERROR:", error);
+
+        alert(
+            error.response?.data?.message ||
+            "Failed to delete test case"
+        );
+    }
+};
+
+const deleteAllTests = async () => {
+
+    const confirmed = window.confirm(
+        "Delete ALL test cases for this project?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+
+        await api.delete(`/projects/${id}/tests`);
+
+        await loadTests();
+
+    } catch (error) {
+
+        setError(
+            error.response?.data?.message ||
+            "Failed to delete tests"
+        );
+    }
+};
+
+const deleteResult = async (resultId) => {
+    try {
+        await api.delete(
+            `/projects/${id}/test-results/${resultId}`
+        );
+
+        setResults(prev =>
+            prev.filter(result => result._id !== resultId)
+        );
+
+        setRunResults(prev =>
+            prev.filter(result => result._id !== resultId)
+        );
+
+    } catch (error) {
+        setError(
+            error.response?.data?.message ||
+            "Failed to delete test result"
+        );
+    }
+};
+
+const deleteAllResults = async () => {
+    try {
+        await api.delete(
+            `/projects/${id}/test-results`
+        );
+
+        setResults([]);
+        setRunResults([]);
+        setSelectedRun(null);
+        setExpandedResult(null);
+
+        await loadTestRuns();
+
+    } catch (error) {
+        setError(
+            error.response?.data?.message ||
+            "Failed to delete execution results"
+        );
+    }
+};
+
     const analyzeRepository = async () => {
         try {
             setAnalyzing(true);
@@ -474,6 +562,13 @@ const [loadingRuns, setLoadingRuns] = useState(false);
                             </h2>
                         </div>
 
+                          <button
+                        onClick={deleteAllTests}
+                        className="border border-red-400/20 px-4 py-2 text-[10px] font-mono text-red-400 hover:bg-red-400/10 transition"
+                          >
+                      DELETE ALL TESTS
+                     </button>
+
                         <span className="font-mono text-xs text-slate-500">
                             {testCases.length} TESTS
                         </span>
@@ -506,7 +601,7 @@ const [loadingRuns, setLoadingRuns] = useState(false);
                             {testCases.map((testCase, index) => (
 
                                 <div
-                                    key={index}
+                                    key={testCase._id}
                                     className="border border-white/10 bg-[#0d1016] p-5 hover:border-violet-400/20 transition"
                                 >
 
@@ -523,6 +618,13 @@ const [loadingRuns, setLoadingRuns] = useState(false);
                                                 <h3 className="font-medium">
                                                     {testCase.name}
                                                 </h3>
+
+                                                <button
+    onClick={() => deleteTest(testCase._id)}
+    className="border border-red-400/20 px-3 py-1.5 text-[9px] font-mono text-red-400 hover:bg-red-400/10 transition"
+>
+    DELETE
+</button>
 
                                             </div>
 
@@ -563,6 +665,8 @@ const [loadingRuns, setLoadingRuns] = useState(false);
 
                 </section>
 
+              
+
 
                 {/* EXECUTION RESULTS */}
                 {results.length > 0 && (
@@ -586,6 +690,13 @@ const [loadingRuns, setLoadingRuns] = useState(false);
                             <div className="font-mono text-xs text-slate-500">
                                 {passRate}% PASS RATE
                             </div>
+
+                             <button
+        onClick={deleteAllResults}
+        className="border border-red-400/20 px-3 py-2 text-[10px] font-mono text-red-400 hover:bg-red-400/10 transition"
+    >
+        DELETE ALL
+                            </button>
 
                         </div>
 
@@ -705,6 +816,17 @@ const [loadingRuns, setLoadingRuns] = useState(false);
                                                 >
                                                     ● {result.status}
                                                 </span>
+
+                                                 <button
+        onClick={(e) => {
+            e.stopPropagation();
+            deleteResult(result._id);
+        }}
+        className="text-red-400/60 hover:text-red-400 transition"
+        title="Delete result"
+    >
+        🗑
+                                                </button>
 
                                                 <span className="text-slate-600">
                                                     {isExpanded
