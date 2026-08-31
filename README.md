@@ -425,7 +425,7 @@ Open the URL displayed by Vite in your browser.
 
 ---
 
-## 📸 Screenshots
+
 
 Add screenshots of the following sections here:
 
