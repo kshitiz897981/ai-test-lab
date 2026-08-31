@@ -550,7 +550,7 @@ const deleteAllResults = async () => {
                 {/* TEST CASES */}
                 <section className="mb-12">
 
-                    <div className="flex justify-between items-end mb-4">
+                    <div className="w-full flex justify-between items-end mb-4">
 
                         <div>
                             <p className="font-mono text-[10px] text-slate-600 tracking-widest">
@@ -562,12 +562,12 @@ const deleteAllResults = async () => {
                             </h2>
                         </div>
 
-                          <button
+                         <button
                         onClick={deleteAllTests}
-                        className="border border-red-400/20 px-4 py-2 text-[10px] font-mono text-red-400 hover:bg-red-400/10 transition"
-                          >
-                      DELETE ALL TESTS
-                     </button>
+                        className="ml-auto block border border-red-400/20 px-4 py-2 text-[10px] font-mono text-red-400 hover:bg-red-400/10 transition"
+>
+    DELETE ALL TESTS
+                         </button>
 
                         <span className="font-mono text-xs text-slate-500">
                             {testCases.length} TESTS
@@ -1110,10 +1110,10 @@ const deleteAllResults = async () => {
                 <p className="font-mono text-[10px] text-violet-400 tracking-widest">
                     RUN DETAILS
                 </p>
-
+            
                 <h2 className="text-xl font-semibold mt-1">
                     {new Date(
-                        selectedRun.runId
+                        selectedRun.startedAt
                     ).toLocaleString()}
                 </h2>
             </div>

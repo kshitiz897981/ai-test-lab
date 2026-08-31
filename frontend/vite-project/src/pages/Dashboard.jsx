@@ -1,12 +1,13 @@
 
 import { useEffect, useState } from "react";
 import api from "../services/api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate,useLocation } from "react-router-dom";
 
 function Dashboard() {
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
-   const navigate = useNavigate();
+    const navigate = useNavigate();
+    const location=useLocation();
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState("");
@@ -158,28 +159,53 @@ function Dashboard() {
                             Workspace
                         </p>
 
-                        <button    onClick={() => navigate("/dashboard")} 
-                        className="w-full flex items-center gap-3 rounded-lg bg-violet-500/10 border border-violet-400/10 px-3 py-2.5 text-sm text-violet-300">
-                            <span>⌂</span>
-                            Overview
+                        <button
+    onClick={() => navigate("/dashboard")}
+    className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
+        location.pathname === "/dashboard"
+            ? "bg-violet-500/10 border border-violet-400/10 text-violet-300"
+            : "text-slate-500 hover:bg-white/5 hover:text-slate-200"
+    }`}
+>
+    <span>⌂</span>
+    Overview
                         </button>
 
-                        <button onClick={() => navigate("/dashboard")} 
-                        className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-500 hover:bg-white/5 hover:text-slate-200">
-                            <span>◉</span>
-                            Repositories
-                        </button>
+                       <button
+    onClick={() => navigate("/repositories")}
+    className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
+        location.pathname === "/repositories"
+            ? "bg-violet-500/10 border border-violet-400/10 text-violet-300"
+            : "text-slate-500 hover:bg-white/5 hover:text-slate-200"
+    }`}
+>
+    <span>◉</span>
+    Repositories
+                       </button>
 
-                        <button  onClick={() => navigate("/projects")} 
-                        className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-500 hover:bg-white/5 hover:text-slate-200">
-                            <span>◇</span>
-                            Test Lab
-                        </button>
+                       <button
+    onClick={() => navigate("/projects")}
+    className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
+        location.pathname === "/projects" ||
+        location.pathname.startsWith("/projects/")
+            ? "bg-violet-500/10 border border-violet-400/10 text-violet-300"
+            : "text-slate-500 hover:bg-white/5 hover:text-slate-200"
+    }`}
+>
+    <span>◇</span>
+    Test Lab
+                      </button>
 
-                        <button  onClick={() => navigate("/results")} 
-                        className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-500 hover:bg-white/5 hover:text-slate-200">
-                            <span>▤</span>
-                            Results
+                        <button
+    onClick={() => navigate("/results")}
+    className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
+        location.pathname === "/results"
+            ? "bg-violet-500/10 border border-violet-400/10 text-violet-300"
+            : "text-slate-500 hover:bg-white/5 hover:text-slate-200"
+    }`}
+>
+    <span>▤</span>
+    Results
                         </button>
 
                     </div>

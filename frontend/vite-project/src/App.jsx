@@ -4,6 +4,8 @@ import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import ProjectLab from "./pages/ProjectLab";
 import TestLab from "./pages/TestLab";
+import Results from "./pages/Results";
+
 
 
 function App() {
@@ -22,6 +24,16 @@ function App() {
             <Route
             path="/projects"
            element={<TestLab />}
+           />
+
+           <Route
+           path="/results"
+           element={<Results />}
+           />
+
+           <Route
+           path="/repositories"
+           element={<Repositories />}
            />
         </Routes>
     );
