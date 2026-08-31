@@ -4,135 +4,209 @@ import "dotenv/config";
 const llm = new ChatGroq({
     model: "openai/gpt-oss-20b",
     temperature: 0,
-     maxTokens: 4096,
+     maxTokens: 2048,
        reasoningEffort: "low"
 });
 
-export const generateTestCases = async (code,existingTests = []) => {
 
-const prompt = `
+export const generateTestCases = async (
+    code,
+    existingTests = []
+) => {
 
-You are an expert software testing engineer responsible for generating
-a comprehensive API test suite from source code.
+    const existingBehaviorText = existingTests
+        .map(test => {
+            return `${test.method || ""}|${test.path || ""}|${test.expectedStatus || ""}`;
+        })
+        .join("\n");
 
-Analyze ONLY the source code provided below.
+  const prompt = `
 
-Your goal is to identify distinct API behaviors that can be reasonably
-inferred from the provided source code.
+You are an expert software testing engineer.
 
-Do NOT artificially generate tests just to reach a number.
-Quality and source-code coverage are more important than quantity.
+Your task is to generate UNIQUE API test cases from the provided source code.
 
-IMPORTANT OUTPUT LIMIT:
+Analyze ONLY the provided source code.
 
-- Generate AT MOST 15 test cases.
-- Generate fewer than 15 if fewer distinct behaviors are available.
-- Never create duplicate or near-duplicate tests.
-- Keep every field concise.
-- name must be concise.
-- description must be concise.
-- sourceFile must contain only the relevant file path.
-- Do not include explanations outside the JSON.
-- Do not include markdown code fences.
-- Do not include comments inside the JSON.
+The most important requirement is BEHAVIORAL UNIQUENESS.
 
-PRIORITIZE COVERAGE ACROSS THESE CATEGORIES:
+Do NOT generate multiple tests for the same API behavior.
 
-1. AUTHENTICATION
-   - register
-   - login
-   - logout
+==================================================
+CORE RULE
+==================================================
 
-2. AUTHORIZATION
-   - protected routes
+A test is considered a DUPLICATE if it tests the same endpoint behavior,
+even if:
+
+- the test name is different
+- the description is different
+- the input values are slightly different
+- the priority is different
+- the source file is different
+- the expected body is slightly different
+
+For example, these should NOT both be generated:
+
+1. Login with missing email
+2. Login with missing password
+
+If both result from the same "email and password are required" validation,
+they represent ONE behavior.
+
+Similarly:
+
+1. Transaction with missing amount
+2. Transaction with missing idempotencyKey
+3. Transaction with missing fromAccount
+
+If the source code handles all of them with the same validation condition
+and same response, generate ONLY ONE test.
+
+==================================================
+EXISTING TESTS
+==================================================
+
+The following tests are ALREADY stored in the database:
+
+${JSON.stringify(existingTests, null, 2)}
+
+These tests MUST NOT be regenerated.
+
+Before creating a test, compare it against the existing tests.
+
+If an existing test already covers the same behavior, SKIP it.
+
+==================================================
+BEHAVIOR CATEGORIES
+==================================================
+
+Look for genuinely different behaviors such as:
+
+1. SUCCESS
+   - successful endpoint operation
+
+2. AUTHENTICATION
    - missing authentication
    - invalid authentication
    - authenticated access
 
-3. CRUD OPERATIONS
-   - create
-   - read
-   - update
-   - delete
-
-4. VALIDATION
-   - missing fields
-   - invalid input
+3. VALIDATION
+   - missing required input
    - malformed input
-   - boundary values
+   - invalid input
+   - boundary condition
 
-5. ERROR HANDLING
-   - resource not found
-   - duplicate resources
-   - invalid requests
-   - server-side failures
+4. RESOURCE
+   - resource exists
+   - resource does not exist
+   - invalid resource ID
 
-6. BUSINESS LOGIC
-   - important service/controller behavior
-   - state changes
-   - database operations
+5. BUSINESS LOGIC
+   - different business rule
+   - different state transition
+   - duplicate/idempotency behavior
 
-7. EDGE CASES
-   - empty input
-   - nonexistent resources
-   - repeated operations
-   - unusual but code-supported inputs
+6. ERROR HANDLING
+   - distinct error path
+   - server-side failure
 
-IMPORTANT RULES:
+Only generate a category when the source code clearly supports it.
 
-- Generate tests ONLY for behavior supported by the provided source code.
-- DO NOT invent endpoints.
-- DO NOT invent HTTP methods.
-- DO NOT invent status codes.
-- DO NOT invent response bodies.
-- DO NOT invent database behavior.
-- DO NOT invent validation rules.
-- DO NOT assume an endpoint exists unless it can be inferred from the code.
-- DO NOT generate duplicate or near-duplicate test cases.
-- Prefer different endpoints and different behaviors.
-- Cover multiple source files whenever possible.
-- If a category is not supported by the source code, skip it.
-- Every test must represent a meaningful unique scenario.
-- Expected status codes MUST be inferred from the actual source code.
-- Expected response bodies MUST be inferred from the actual source code.
-- Do not use generic or assumed values when the source code provides specific ones.
+==================================================
+VERY IMPORTANT
+==================================================
 
-FOR EVERY TEST CASE PROVIDE:
+DO NOT generate tests merely to increase the number of tests.
 
-- name
-- description
-- input
-- expectedOutput
-- priority
-- sourceFile
+DO NOT generate similar tests.
 
-The input MUST follow this structure:
+DO NOT generate tests for hypothetical behavior.
+
+DO NOT invent behavior.
+
+DO NOT invent endpoints.
+
+DO NOT invent HTTP methods.
+
+DO NOT invent status codes.
+
+DO NOT invent response bodies.
+
+DO NOT invent validation rules.
+
+DO NOT assume behavior that is not visible in the source code.
+
+Every test MUST correspond to a distinct code path or meaningful behavior.
+
+==================================================
+BEHAVIORAL DEDUPLICATION
+==================================================
+
+Before generating each test, ask:
+
+"Does an existing test already cover this exact behavior?"
+
+Then ask:
+
+"Does another generated test already cover this behavior?"
+
+If YES to either question, DO NOT generate the test.
+
+Two tests are considered the same behavior when they have:
+
+- same HTTP method
+- same API endpoint
+- same validation/business condition
+- same expected response behavior
+
+Changing only input values does NOT make a test unique.
+
+Changing only the test name does NOT make a test unique.
+
+Changing only the description does NOT make a test unique.
+
+==================================================
+TEST COUNT
+==================================================
+
+Generate AT MOST 10 tests.
+
+Generate fewer if fewer unique behaviors exist.
+
+If only 2 genuinely unique behaviors exist, generate 2.
+
+If there are no new behaviors, return:
 
 {
-  "method": "HTTP method",
-  "path": "API path",
-  "body": {},
-  "headers": {}
+  "testCases": []
 }
 
-The expectedOutput MUST follow this structure:
+==================================================
+TEST QUALITY
+==================================================
 
-{
-  "status": <HTTP status inferred from source code>,
-  "body": <response body inferred from source code>
-}
+Prefer:
 
-PRIORITY MUST BE ONE OF:
+ONE strong test per distinct behavior
 
-"HIGH"
-"MEDIUM"
-"LOW"
+over
 
-RETURN ONLY VALID JSON.
+MANY tests covering the same behavior.
 
-DO NOT wrap the JSON in markdown.
+Prioritize meaningful coverage across different endpoints and code paths.
 
-Return exactly this structure:
+==================================================
+OUTPUT FORMAT
+==================================================
+
+Return ONLY valid JSON.
+
+Do not use markdown.
+
+Do not include explanations.
+
+Use exactly this structure:
 
 {
   "testCases": [
@@ -155,63 +229,99 @@ Return exactly this structure:
   ]
 }
 
-The values in the example above are illustrative only.
-Use values inferred from the actual source code.
+==================================================
+FIELD RULES
+==================================================
 
-EXISTING TEST CASES:
+name:
+Short and unique.
 
-${JSON.stringify(existingTests, null, 2)}
+description:
+Briefly describe the behavior being tested.
 
-IMPORTANT TEST DEDUPLICATION RULES:
-
-The existing test cases above are ALREADY implemented and stored.
-
-DO NOT generate a test case that covers the same API behavior
-as any existing test case.
-
-Different test names, descriptions, priorities, or source files
-DO NOT make a test different.
-
-Consider a test duplicate when it covers the same:
-- HTTP method
-- API path
-- meaningful input
-- expected response behavior
-
-If an API behavior is already covered, SKIP it.
-
-Generate ONLY genuinely new test scenarios that can be inferred
-from the source code.
-
-DO NOT create tests just to increase the test count.
-
-If there are no additional behaviors to test, return:
+input:
+Must contain:
 
 {
-  "testCases": []
+  "method": "HTTP method",
+  "path": "API path",
+  "body": {},
+  "headers": {}
 }
 
-OUTPUT LIMIT:
+expectedOutput:
+Must contain:
 
-Generate only the test cases that are genuinely useful.
+{
+  "status": <status from source code>,
+  "body": <response body from source code>
+}
 
-Maximum 15 test cases.
+priority:
+Must be exactly:
 
-Keep every field concise.
+"HIGH"
+"MEDIUM"
+"LOW"
 
-Do not include unnecessary explanation.
+sourceFile:
+Use the actual relevant source file path.
 
-Return complete valid JSON.
+==================================================
+FINAL CHECK BEFORE OUTPUT
+==================================================
 
-SOURCE CODE:
+Before returning the JSON:
+
+1. Remove tests that duplicate existing tests.
+2. Remove tests that duplicate another generated test.
+3. Remove tests that differ only by input values.
+4. Remove tests that differ only by names/descriptions.
+5. Remove tests that exercise the same validation condition.
+6. Remove hypothetical tests.
+7. Ensure every remaining test represents a genuinely different behavior.
+
+Then return ONLY the final JSON.
+
+==================================================
+SOURCE CODE
+==================================================
 
 ${code}
 `;
 
+    const response = await llm.invoke(prompt);
 
-  const response = await llm.invoke(prompt);
+    let content = response.content;
 
+    if (Array.isArray(content)) {
+        content = content
+            .map(item => item.text || "")
+            .join("");
+    }
 
+    content = content
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
+        .trim();
 
-return JSON.parse(response.content);
+    const parsed = JSON.parse(content);
+
+if (Array.isArray(parsed)) {
+    return {
+        testCases: parsed
+    };
+}
+
+if (!Array.isArray(parsed?.testCases)) {
+    return {
+        testCases: []
+    };
+}
+
+return parsed;
 };
+
+
+
+  

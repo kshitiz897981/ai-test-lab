@@ -128,7 +128,7 @@ export const analyzeRepository = async (req, res) => {
 
 
         // Limit context sent to LLM
-        const limitedDocuments = uniqueDocuments.slice(0, 15);
+        const limitedDocuments = uniqueDocuments.slice(0, 8);
 
         const relevantCode = limitedDocuments
             .map(doc => doc.pageContent)
@@ -162,6 +162,12 @@ export const analyzeRepository = async (req, res) => {
             existingTestSummary
         );
 
+        console.log("LLM TEST CASE RESPONSE:", testCases);
+
+      const generatedTests = Array.isArray(testCases?.testCases)
+      ? testCases.testCases
+      : [];
+
 
         // ===============================
         // REMOVE DUPLICATE TESTS
@@ -172,7 +178,7 @@ export const analyzeRepository = async (req, res) => {
         );
 
 
-        const newTests = testCases.testCases.filter(test => {
+        const newTests = generatedTests.filter(test => {
 
             const key = getBehaviorKey(test);
 
@@ -197,7 +203,7 @@ export const analyzeRepository = async (req, res) => {
 
         console.log(
             "Generated tests:",
-            testCases.testCases.length
+            generatedTests.length
         );
 
         console.log(
@@ -207,7 +213,7 @@ export const analyzeRepository = async (req, res) => {
 
         console.log(
             "Duplicates:",
-            testCases.testCases.length - newTests.length
+            generatedTests.length - newTests.length
         );
 
 
@@ -226,6 +232,9 @@ export const analyzeRepository = async (req, res) => {
                 }))
             );
         }
+        const savedTests = await testCaseModel.find({
+        project: project._id
+        });
 
 
         // ===============================
@@ -262,7 +271,7 @@ export const analyzeRepository = async (req, res) => {
 
             testGeneration: {
                 totalTests:
-                    testCases.testCases?.length || 0
+                    generatedTests?.length || 0
             }
         };
 
@@ -283,14 +292,15 @@ export const analyzeRepository = async (req, res) => {
                 testGeneration: {
 
                     generatedTests:
-                        testCases.testCases.length,
+                        generatedTests.length,
 
                     newTests:
                         insertedTests.length,
 
                     duplicateTests:
-                        testCases.testCases.length -
-                        insertedTests.length
+                        generatedTests.length -
+                        insertedTests.length,
+                   totalTests: savedTests.length
                 }
             },
 
@@ -300,7 +310,7 @@ export const analyzeRepository = async (req, res) => {
                 // Return savedTests because these
                 // contain MongoDB _id values
 
-                testCases: insertedTests
+                testCases: savedTests
             }
         });
 
@@ -324,73 +334,34 @@ export const analyzeRepository = async (req, res) => {
 };
 
 const getBehaviorKey = (test) => {
-
     const method =
         test.input?.method?.toUpperCase() || "";
 
     const path =
-        test.input?.path || "";
+        test.input?.path?.replace(/\/+$/, "") || "";
 
     const status =
-        test.expectedOutput?.status || "";
+        String(test.expectedOutput?.status ?? "");
 
-    const description = (
-        test.description ||
-        test.name ||
-        ""
-    ).toLowerCase();
+    const body = test.input?.body || {};
 
+    const bodyKeys = Object.keys(body)
+        .sort()
+        .join(",");
 
-    let behavior = "generic";
+    const headers = test.input?.headers || {};
 
+    const headerKeys = Object.keys(headers)
+        .sort()
+        .join(",");
 
-    if (
-        description.includes("authentication") ||
-        description.includes("without authentication") ||
-        description.includes("without auth") ||
-        description.includes("unauthorized")
-    ) {
-        behavior = "unauthenticated";
-    }
-
-    else if (
-        description.includes("missing") ||
-        description.includes("required")
-    ) {
-        behavior = "missing-input";
-    }
-
-    else if (
-        description.includes("invalid")
-    ) {
-        behavior = "invalid-input";
-    }
-
-    else if (
-        description.includes("duplicate") ||
-        description.includes("idempotency") ||
-        description.includes("already")
-    ) {
-        behavior = "duplicate";
-    }
-
-    else if (
-        description.includes("non-existent") ||
-        description.includes("not found")
-    ) {
-        behavior = "not-found";
-    }
-
-    else if (
-        description.includes("success") ||
-        description.includes("successful") ||
-        description.includes("valid")
-    ) {
-        behavior = "success";
-    }
-
-
-    return `${method}|${path}|${status}|${behavior}`;
+    return [
+        method,
+        path,
+        status,
+        `body:${bodyKeys}`,
+        `headers:${headerKeys}`
+    ].join("|");
 };
 
 export const runProjectTests = async (req, res) => {
