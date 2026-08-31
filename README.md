@@ -427,39 +427,8 @@ Open the URL displayed by Vite in your browser.
 
 
 
-Add screenshots of the following sections here:
 
-### Dashboard
 
-```text
-Add dashboard screenshot
-```
-
-### Repository Analysis
-
-```text
-Add repository analysis screenshot
-```
-
-### AI Test Lab
-
-```text
-Add test generation screenshot
-```
-
-### Test Results
-
-```text
-Add execution results screenshot
-```
-
-### Failure Analysis
-
-```text
-Add failure analysis screenshot
-```
-
----
 
 ## 🎯 Why This Project?
 
