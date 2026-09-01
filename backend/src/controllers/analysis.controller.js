@@ -315,22 +315,29 @@ export const analyzeRepository = async (req, res) => {
         });
 
 
-    } catch (error) {
+    } 
+    catch (error) {
+    console.error("ANALYZE REPOSITORY ERROR:", error);
 
-        console.error(
-            "ANALYZE REPOSITORY ERROR:",
-            error
-        );
+    const isRateLimit =
+        error?.status === 429 ||
+        error?.response?.status === 429 ||
+        error?.message?.includes("rate_limit_exceeded") ||
+        error?.message?.includes("Rate limit reached");
 
-        return res.status(500).json({
-
+    if (isRateLimit) {
+        return res.status(429).json({
             message:
-                "Failed to analyze repository",
-
-            error:
-                error.message
+                "AI rate limit reached. Please wait a few seconds and try again.",
+            retryAfter: 20
         });
     }
+
+    return res.status(500).json({
+        message: "Failed to analyze repository",
+        error: error.message
+    });
+}
 };
 
 const getBehaviorKey = (test) => {

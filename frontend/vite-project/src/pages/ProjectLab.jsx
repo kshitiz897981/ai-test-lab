@@ -102,13 +102,17 @@ const [loadingRuns, setLoadingRuns] = useState(false);
     }
 };
 
-   const viewRun = async (runId) => {
+ const viewRun = async (run) => {
     try {
         const response = await api.get(
-            `/projects/${id}/test-runs/${encodeURIComponent(runId)}`
+            `/projects/${id}/test-runs/${encodeURIComponent(run.runId)}`
         );
 
-        setSelectedRun(response.data);
+        setSelectedRun({
+            ...response.data,
+            startedAt: run.startedAt
+        });
+
         setRunResults(response.data.results || []);
         setExpandedResult(null);
 
@@ -224,12 +228,23 @@ const deleteAllResults = async () => {
                  response.data.analysis || null
             );
 
-        } catch (error) {
-            setError(
-                error.response?.data?.message ||
-                "Repository analysis failed"
-            );
-        } finally {
+        } 
+       catch (error) {
+    const status = error.response?.status;
+
+    if (status === 429) {
+        setError(
+            "AI rate limit reached. Please wait a few seconds and try again."
+        );
+        return;
+    }
+
+    setError(
+        error.response?.data?.message ||
+        "Failed to analyze repository"
+    );
+}
+        finally {
             setAnalyzing(false);
         }
     };
@@ -1074,7 +1089,7 @@ const deleteAllResults = async () => {
 
 
                 <button
-                    onClick={() => viewRun(run.runId)}
+                    onClick={() => viewRun(run)}
                     className="border border-violet-400/20 px-4 py-2 text-[10px] font-mono text-violet-400 hover:bg-violet-400/10 transition"
                 >
                     VIEW RUN →
@@ -1099,6 +1114,7 @@ const deleteAllResults = async () => {
                 {activeTab === "analytics" && (
     <AnalyticsPanel analytics={analytics} />
 )}
+       
 
                {selectedRun && (
 
@@ -1108,10 +1124,13 @@ const deleteAllResults = async () => {
 
             <div>
                 <p className="font-mono text-[10px] text-violet-400 tracking-widest">
+
                     RUN DETAILS
                 </p>
+                
             
                 <h2 className="text-xl font-semibold mt-1">
+                     
                     {new Date(
                         selectedRun.startedAt
                     ).toLocaleString()}
