@@ -7,7 +7,6 @@ import {
     deleteProject,
     getProjectTestCases,
     updateProject,
-    getProjectTests,
     getProjectAnalytics,
     deleteProjectTests,
     deleteTestCase,
