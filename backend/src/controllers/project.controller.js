@@ -1,5 +1,5 @@
 import projectModel from "../models/project.model.js";
-import testCaseModel from "../models/testCase.model.js
+import testCaseModel from "../models/testCase.model.js";
 import testResultModel from "../models/testResult.model.js";
 
 
