@@ -51,7 +51,7 @@ router.delete("/:id/tests/:testId", deleteTestCase);
 
 router.delete("/:id/tests", deleteProjectTests);
 
-router.get("/:id/tests", getProjectTests);
+
 
 router.delete(
     "/:id/test-results/:resultId",
