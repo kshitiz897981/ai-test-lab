@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import ProjectLab from "./pages/ProjectLab";
 import TestLab from "./pages/TestLab";
 import Results from "./pages/Results";
+import SignUp from "./pages/SignUp";
 
 
 
@@ -35,6 +36,7 @@ function App() {
            path="/repositories"
            element={<Repositories />}
            />
+           <Route path="/signup" element={<SignUp />} />
         </Routes>
     );
 }

@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../services/api";
 
-function Login() {
+function SignUp() {
     const navigate = useNavigate();
 
     const [form, setForm] = useState({
+        name: "",
         email: "",
         password: ""
     });
@@ -22,17 +23,16 @@ function Login() {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-
         setError("");
         setLoading(true);
 
         try {
-            await api.post("/auth/login", form);
-            navigate("/dashboard");
+            await api.post("/auth/register", form);
+            navigate("/login");
         } catch (error) {
             setError(
                 error.response?.data?.message ||
-                "Login failed"
+                "Registration failed. Please try again."
             );
         } finally {
             setLoading(false);
@@ -48,10 +48,10 @@ function Login() {
                         Internal Platform
                     </span>
                     <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-                        AI Test Lab
+                        Create Account
                     </h1>
                     <p className="text-sm text-slate-400 mt-2">
-                        Sign in to access control panel
+                        Sign up to get access to AI Test Lab
                     </p>
                 </div>
 
@@ -64,6 +64,21 @@ function Login() {
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-5">
+                    <div>
+                        <label className="block text-xs font-medium uppercase tracking-wider text-slate-400 mb-2">
+                            Full Name
+                        </label>
+                        <input
+                            type="text"
+                            name="name"
+                            placeholder="John Doe"
+                            value={form.name}
+                            onChange={handleChange}
+                            required
+                            className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-200 placeholder-slate-600 transition"
+                        />
+                    </div>
+
                     <div>
                         <label className="block text-xs font-medium uppercase tracking-wider text-slate-400 mb-2">
                             Email Address
@@ -105,15 +120,15 @@ function Login() {
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
                         )}
-                        <span>{loading ? "Authenticating..." : "Login"}</span>
+                        <span>{loading ? "Creating account..." : "Sign Up"}</span>
                     </button>
                 </form>
 
-                {/* Link to Sign Up */}
+                {/* Link to Login */}
                 <p className="text-center text-sm text-slate-400 mt-6">
-                    Don't have an account?{" "}
-                    <Link to="/signup" className="text-blue-400 hover:underline font-medium">
-                        Sign Up
+                    Already have an account?{" "}
+                    <Link to="/login" className="text-blue-400 hover:underline font-medium">
+                        Log In
                     </Link>
                 </p>
             </div>
@@ -121,4 +136,4 @@ function Login() {
     );
 }
 
-export default Login;
+export default SignUp;
