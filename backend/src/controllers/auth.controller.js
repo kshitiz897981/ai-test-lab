@@ -1,7 +1,13 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-
 import userModel from "../models/user.model.js";
+
+// Cookie options helper
+const COOKIE_OPTIONS = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
+};
 
 export const register = async (req, res) => {
     try {
@@ -35,11 +41,7 @@ export const register = async (req, res) => {
             { expiresIn: "7d" }
         );
 
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax"
-        });
+        res.cookie("token", token, COOKIE_OPTIONS);
 
         return res.status(201).json({
             message: "User registered successfully",
@@ -96,11 +98,7 @@ export const login = async (req, res) => {
             { expiresIn: "7d" }
         );
 
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax"
-        });
+        res.cookie("token", token, COOKIE_OPTIONS);
 
         return res.status(200).json({
             message: "Login successful",
